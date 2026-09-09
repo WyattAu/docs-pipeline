@@ -7,6 +7,7 @@ description = "Markdown rendering and tree-sitter syntax highlighting pipeline f
 license = "MIT OR Apache-2.0"
 keywords = ["markdown", "syntax-highlighting", "tree-sitter", "docs"]
 categories = ["text-processing", "development-tools"]
+exclude = ["/target"]
 
 [dependencies]
 pulldown-cmark = "0.13"
@@ -71,3 +72,7 @@ lang-css = ["dep:tree-sitter-css"]
 lang-bash = ["dep:tree-sitter-bash"]
 lang-toml = ["dep:tree-sitter-toml-ng"]
 lang-markdown = ["dep:tree-sitter-md"]
+
+[lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
