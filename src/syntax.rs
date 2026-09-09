@@ -350,15 +350,23 @@ impl Default for SyntaxHighlighter {
 // Rendered-HTML code block highlighting
 // ============================================================================
 
-static CODE_BLOCK_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"<pre([^>]*)>\s*<code([^>]*)>([\s\S]*?)</code>\s*</pre>"#).unwrap()
-});
+/// INVARIANT: every pattern passed here is a compile-time constant that was
+/// validated at development time. `Regex::new` can only fail on invalid
+/// syntax, so a panic from `expect` indicates a bug in this crate's own
+/// patterns — never a recoverable runtime condition.
+#[allow(clippy::expect_used)]
+fn static_regex(pattern: &str) -> Regex {
+    Regex::new(pattern).expect("validated static regex pattern")
+}
+
+static CODE_BLOCK_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| static_regex(r#"<pre([^>]*)>\s*<code([^>]*)>([\s\S]*?)</code>\s*</pre>"#));
 
 static LANGUAGE_CLASS_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"class="language-([^"]*)""#).unwrap());
+    LazyLock::new(|| static_regex(r#"class="language-([^"]*)""#));
 
 static CODE_CONTENT_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"<code[^>]*>([\s\S]*?)</code>"#).unwrap());
+    LazyLock::new(|| static_regex(r#"<code[^>]*>([\s\S]*?)</code>"#));
 
 /// Highlight all `<pre><code class="language-...">` blocks in rendered HTML.
 ///
@@ -580,6 +588,7 @@ const HIGH_CONTRAST_THEME_COLORS: ThemeColors = ThemeColors {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use super::*;
 
     #[test]

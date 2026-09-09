@@ -1,6 +1,6 @@
 [package]
 name = "docs-pipeline"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.85"
 description = "Markdown rendering and tree-sitter syntax highlighting pipeline for documentation sites"

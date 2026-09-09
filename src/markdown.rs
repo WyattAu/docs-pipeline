@@ -50,26 +50,36 @@ use tracing::{debug, instrument};
 // Static Regex Patterns (compiled once, zero per-call overhead)
 // ============================================================================
 
-static EMBED_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"!\{(\w+):\s*([^}]+)\}").unwrap());
+/// Compile a static regex pattern.
+///
+/// INVARIANT: every pattern passed here is a compile-time constant that was
+/// validated at development time. `Regex::new` can only fail on invalid
+/// syntax, so a panic from `expect` indicates a bug in this crate's own
+/// patterns — never a recoverable runtime condition.
+#[allow(clippy::expect_used)]
+fn static_regex(pattern: &str) -> Regex {
+    Regex::new(pattern).expect("validated static regex pattern")
+}
+
+static EMBED_RE: LazyLock<Regex> = LazyLock::new(|| static_regex(r"!\{(\w+):\s*([^}]+)\}"));
 
 static WIKILINK_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]").unwrap());
+    LazyLock::new(|| static_regex(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]"));
 
-static ADMONITION_HEADER_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^>\s*\[!(\w+)\]").unwrap());
+static ADMONITION_HEADER_RE: LazyLock<Regex> = LazyLock::new(|| static_regex(r"^>\s*\[!(\w+)\]"));
 
-static ADMONITION_BODY_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^>\s?(.*)").unwrap());
+static ADMONITION_BODY_RE: LazyLock<Regex> = LazyLock::new(|| static_regex(r"^>\s?(.*)"));
 
 // Rendered-HTML TOC patterns (used by [`extract_toc_from_html`] and
 // [`extract_inline_toc`]; headings must already carry `id` attributes).
 
 static TOC_HEADING_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"<h([1-6])[^>]*id="([^"]*)"[^>]*>(.*?)</h[1-6]>"#).unwrap());
+    LazyLock::new(|| static_regex(r#"<h([1-6])[^>]*id="([^"]*)"[^>]*>(.*?)</h[1-6]>"#));
 
-static HTML_STRIP_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").unwrap());
+static HTML_STRIP_REGEX: LazyLock<Regex> = LazyLock::new(|| static_regex(r"<[^>]+>"));
 
 static INLINE_TOC_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"<h([23])[^>]*id="([^"]*)"[^>]*>(.*?)</h[23]>"#).unwrap());
+    LazyLock::new(|| static_regex(r#"<h([23])[^>]*id="([^"]*)"[^>]*>(.*?)</h[23]>"#));
 
 // ============================================================================
 // TOC & Embed Types
@@ -294,14 +304,31 @@ impl MarkdownParser {
             if !in_admonition {
                 if let Some(caps) = ADMONITION_HEADER_RE.captures(line) {
                     in_admonition = true;
-                    admonition_type = caps.get(1).unwrap().as_str().to_lowercase();
+                    // INVARIANT: group 1 always participates when the pattern matches.
+                    #[allow(clippy::expect_used)]
+                    {
+                        admonition_type = caps
+                            .get(1)
+                            .expect("capture group 1 always matches")
+                            .as_str()
+                            .to_lowercase();
+                    }
                     continue;
                 }
             }
 
             if in_admonition {
                 if let Some(caps) = ADMONITION_BODY_RE.captures(line) {
-                    admonition_lines.push(caps.get(1).unwrap().as_str().to_string());
+                    // INVARIANT: group 1 always participates when the pattern matches.
+                    #[allow(clippy::expect_used)]
+                    {
+                        admonition_lines.push(
+                            caps.get(1)
+                                .expect("capture group 1 always matches")
+                                .as_str()
+                                .to_string(),
+                        );
+                    }
                     continue;
                 } else {
                     result.push_str(&format_admonition_html(&admonition_type, &admonition_lines));
@@ -925,6 +952,7 @@ fn find_closing_brackets(chars: &[char], start: usize, open: char, close: char) 
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use super::*;
 
     #[test]
