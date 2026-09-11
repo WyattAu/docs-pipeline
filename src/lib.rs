@@ -37,12 +37,14 @@
 //! ## Syntax highlighting example
 //!
 //! ```
+//! # #[cfg(feature = "lang-rust")] {
 //! use docs_pipeline::syntax::SyntaxHighlighter;
 //!
 //! let hl = SyntaxHighlighter::new();
 //! assert!(hl.is_language_supported("rust"));
 //! let html = hl.highlight_or_fallback("fn main() {}", "rust");
 //! assert!(html.contains("syntax-highlight"));
+//! # }
 //! ```
 
 #![forbid(unsafe_code)]
