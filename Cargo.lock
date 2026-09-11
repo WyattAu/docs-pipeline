@@ -155,7 +155,6 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.20",
  "tracing",
- "tree-sitter",
  "tree-sitter-bash",
  "tree-sitter-css",
  "tree-sitter-highlight",

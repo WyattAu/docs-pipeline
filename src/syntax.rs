@@ -47,6 +47,8 @@ impl SyntaxHighlighter {
 
     /// Initialize all highlight configurations
     fn init_configs() -> std::collections::HashMap<Language, HighlightConfiguration> {
+        // `mut` is only exercised when at least one `lang-*` feature is on.
+        #[allow(unused_mut)]
         let mut configs = std::collections::HashMap::new();
 
         #[cfg(feature = "lang-rust")]
@@ -598,6 +600,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "lang-rust")]
     fn test_rust_highlighting() {
         let highlighter = SyntaxHighlighter::new();
         let code = r#"fn main() { println!("Hello"); }"#;
@@ -611,6 +614,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "lang-python")]
     fn test_python_highlighting() {
         let highlighter = SyntaxHighlighter::new();
         let code = "def hello():\n    print('Hello')";
@@ -725,6 +729,7 @@ mod tests {
     // ── highlight_code_blocks (rendered HTML) Tests ─────────────────────
 
     #[test]
+    #[cfg(feature = "lang-rust")]
     fn highlight_rust_code_block() {
         let html =
             r#"<pre><code class="language-rust">fn main() { println!("Hello"); }</code></pre>"#;

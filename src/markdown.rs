@@ -22,7 +22,7 @@
 //! by `pulldown-cmark` as HTML events and then passed through the ammonia
 //! sanitizer. Unknown/custom element tags are **removed** by the default
 //! allowlist — consumers who want specific custom components to survive must
-//! add them via a custom ammonia builder (see [`sanitize`]).
+//! add them via a custom ammonia builder (see [`crate::sanitize::sanitize_html`]).
 //!
 //! ## Why no streaming/chunked rendering?
 //!

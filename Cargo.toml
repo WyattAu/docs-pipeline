@@ -34,7 +34,6 @@ tracing = "0.1"
 parking_lot = "0.12"
 
 # Syntax highlighting
-tree-sitter = "0.25"
 tree-sitter-highlight = "0.25"
 tree-sitter-rust = { version = "0.24", optional = true }
 tree-sitter-python = { version = "0.25", optional = true }

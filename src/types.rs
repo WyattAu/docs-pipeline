@@ -270,7 +270,7 @@ impl SyntaxTheme {
 /// Supported programming languages for syntax highlighting.
 ///
 /// Every variant is listed here regardless of which `lang-*` cargo features
-/// are enabled; use [`SyntaxHighlighter::is_language_supported`] to check
+/// are enabled; use [`crate::syntax::SyntaxHighlighter::is_language_supported`] to check
 /// availability at runtime.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum Language {
