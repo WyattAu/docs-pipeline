@@ -375,3 +375,142 @@ fn free_functions_honor_the_same_knobs() {
         "render_markdown uses default (autolinks on)"
     );
 }
+
+// ---------------------------------------------------------------------------
+// lang-* feature gates (11 knobs): each gate must observably change pipeline
+// behavior when toggled. The observable channel is
+// `SyntaxHighlighter::is_language_supported` + `highlight` (Ok vs
+// `UnsupportedLanguage`) + `highlight_or_fallback` (highlighted vs plain).
+// Each test pins its gate with `cfg!(feature = ...)`, so it passes under
+// `--all-features` (supported) AND `--no-default-features` (unsupported) —
+// toggling the feature flips the asserted outcome.
+// ---------------------------------------------------------------------------
+
+/// Assert one gate end to end: support flag, highlight result, and the
+/// fallback channel all agree with the feature state.
+fn assert_gate(name: &str, sample: &str, enabled: bool) {
+    let highlighter = SyntaxHighlighter::new();
+    assert_eq!(
+        highlighter.is_language_supported(name),
+        enabled,
+        "gate {name}: support flag must follow the feature"
+    );
+    assert_eq!(
+        highlighter.highlight(sample, name).is_ok(),
+        enabled,
+        "gate {name}: highlight must succeed exactly when the feature is on"
+    );
+    let fallback = highlighter.highlight_or_fallback(sample, name);
+    if enabled {
+        assert!(
+            fallback.contains("syntax-highlight"),
+            "gate {name}: enabled highlight must emit spans"
+        );
+    } else {
+        assert!(
+            !fallback.contains("syntax-highlight"),
+            "gate {name}: disabled gate must fall back to plain output"
+        );
+    }
+}
+
+#[test]
+fn gate_lang_rust() {
+    assert_gate("rust", "fn main() {}", cfg!(feature = "lang-rust"));
+}
+
+#[test]
+fn gate_lang_python() {
+    assert_gate(
+        "python",
+        "def f():\n    pass",
+        cfg!(feature = "lang-python"),
+    );
+}
+
+#[test]
+fn gate_lang_javascript() {
+    assert_gate("js", "const x = 1;", cfg!(feature = "lang-javascript"));
+}
+
+#[test]
+fn gate_lang_typescript() {
+    assert_gate(
+        "ts",
+        "const x: number = 1;",
+        cfg!(feature = "lang-typescript"),
+    );
+}
+
+#[test]
+fn gate_lang_json() {
+    assert_gate("json", "{\"a\": 1}", cfg!(feature = "lang-json"));
+}
+
+#[test]
+fn gate_lang_yaml() {
+    assert_gate("yaml", "a: 1", cfg!(feature = "lang-yaml"));
+}
+
+#[test]
+fn gate_lang_html() {
+    assert_gate("html", "<p>hi</p>", cfg!(feature = "lang-html"));
+}
+
+#[test]
+fn gate_lang_css() {
+    assert_gate("css", ".a { color: red; }", cfg!(feature = "lang-css"));
+}
+
+#[test]
+fn gate_lang_bash() {
+    assert_gate("bash", "echo hi", cfg!(feature = "lang-bash"));
+}
+
+#[test]
+fn gate_lang_toml() {
+    assert_gate("toml", "a = 1", cfg!(feature = "lang-toml"));
+}
+
+#[test]
+fn gate_lang_markdown() {
+    assert_gate("markdown", "# hi", cfg!(feature = "lang-markdown"));
+}
+
+/// `supported_languages` agrees with the gate flags: every enabled language
+/// is listed, every disabled one is absent.
+#[test]
+fn supported_languages_match_gate_flags() {
+    let highlighter = SyntaxHighlighter::new();
+    let listed = highlighter.supported_languages();
+    for (name, enabled) in [
+        ("rust", cfg!(feature = "lang-rust")),
+        ("python", cfg!(feature = "lang-python")),
+        ("javascript", cfg!(feature = "lang-javascript")),
+        ("typescript", cfg!(feature = "lang-typescript")),
+        ("json", cfg!(feature = "lang-json")),
+        ("yaml", cfg!(feature = "lang-yaml")),
+        ("html", cfg!(feature = "lang-html")),
+        ("css", cfg!(feature = "lang-css")),
+        ("bash", cfg!(feature = "lang-bash")),
+        ("toml", cfg!(feature = "lang-toml")),
+        ("markdown", cfg!(feature = "lang-markdown")),
+    ] {
+        assert_eq!(
+            listed.contains(&name),
+            enabled,
+            "supported_languages must list {name} exactly when its gate is on"
+        );
+    }
+}
+
+/// SQL is a known name with no bundled grammar (not a gate): it is never
+/// "supported" and always falls back to plain output.
+#[test]
+fn sql_without_grammar_always_falls_back() {
+    let highlighter = SyntaxHighlighter::new();
+    assert!(!highlighter.is_language_supported("sql"));
+    assert!(highlighter.highlight("SELECT 1", "sql").is_err());
+    let fallback = highlighter.highlight_or_fallback("SELECT 1", "sql");
+    assert!(!fallback.contains("syntax-highlight"));
+}

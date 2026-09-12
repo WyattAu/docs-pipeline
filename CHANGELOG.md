@@ -5,6 +5,18 @@ Changelog](https://keepachangelog.com/) — versions follow [semver](https://sem
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-09-12
+
+### Added
+- `tests/config_matrix.rs`: the 11 `lang-*` feature gates behavior-proven
+  — each gate pins `is_language_supported` / `highlight` (Ok vs
+  `UnsupportedLanguage`) / `highlight_or_fallback` (spans vs plain) and
+  `supported_languages` against its `cfg!(feature = ...)` flag, so the
+  suite passes under `--all-features` (all gates on) and
+  `--no-default-features` (all gates off): toggling any gate flips the
+  asserted pipeline behavior. SQL (known name, no bundled grammar)
+  documented as always-fallback. Dead-knob sweep: zero new dead knobs.
+
 ## [0.1.3] - 2026-09-12
 
 ### Fixed
