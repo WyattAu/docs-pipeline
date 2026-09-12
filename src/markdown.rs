@@ -136,6 +136,9 @@ pub struct BlockReference {
 
 /// Markdown parser for parsing and rendering markdown documents
 pub struct MarkdownParser {
+    /// The options this parser was configured with (retained so every knob
+    /// stays observable at render time, not just compile-into-cmark time).
+    options: MarkdownOptions,
     /// Compiled pulldown-cmark options
     cmark_options: Options,
 }
@@ -149,7 +152,10 @@ impl MarkdownParser {
     /// Create a new markdown parser with custom options
     pub fn with_options(options: MarkdownOptions) -> Self {
         let cmark_options = Self::build_cmark_options(&options);
-        Self { cmark_options }
+        Self {
+            options,
+            cmark_options,
+        }
     }
 
     /// Build pulldown-cmark options from our MarkdownOptions
@@ -637,6 +643,13 @@ impl MarkdownParser {
             .clean(&html_output)
             .to_string();
 
+        // GFM-style autolink extension: after sanitization (so the anchors we
+        // emit are the final, trusted output) and never inside code blocks,
+        // existing links, or tag attributes.
+        if self.options.enable_autolinks {
+            html_output = autolink_html(&html_output);
+        }
+
         for _ in 0..code_block_count.get() {
             stats.increment_code_blocks();
         }
@@ -765,6 +778,145 @@ impl Default for MarkdownParser {
     fn default() -> Self {
         Self::with_options(MarkdownOptions::default())
     }
+}
+
+// ============================================================================
+// Autolink pass (GFM-style, post-sanitization)
+// ============================================================================
+
+/// Characters that terminate a bare URL but are usually sentence punctuation
+/// when they appear at the end (GFM trims these from the match).
+const URL_TRAILING_PUNCT: &[char] = &['.', ',', ';', ':', '!', '?', '\'', '"', '*', '_', '~'];
+
+/// Wrap bare `https?://` and `www.` URLs in text segments of rendered HTML
+/// with `<a href>` elements (the GFM autolink extension).
+///
+/// Regions that must never be rewritten are skipped structurally:
+/// - inside `<pre>`/`<code>` (code stays code),
+/// - inside `<a>`/`</a>` (existing links are not double-wrapped),
+/// - inside tags (protects attribute values such as `href="https://…").
+///
+/// The input is already HTML-escaped and sanitized, so the matched URL text
+/// is inserted verbatim (its escapes are preserved, never double-encoded).
+fn autolink_html(html: &str) -> String {
+    let mut out = String::with_capacity(html.len() + 64);
+    let mut skip_depth = 0usize; // <pre>/<code> nesting
+    let mut link_depth = 0usize; // <a> nesting
+    let mut rest = html;
+
+    while let Some(lt) = rest.find('<') {
+        let (text, after) = rest.split_at(lt);
+        if skip_depth == 0 && link_depth == 0 {
+            autolink_text(text, &mut out);
+        } else {
+            out.push_str(text);
+        }
+
+        let tag_end = after.find('>').map_or(after.len(), |p| p + 1);
+        let tag = &after[..tag_end];
+        let lower = tag.to_ascii_lowercase();
+        if lower.starts_with("<pre") || lower.starts_with("<code") {
+            skip_depth += 1;
+        } else if lower.starts_with("</pre") || lower.starts_with("</code") {
+            skip_depth = skip_depth.saturating_sub(1);
+        } else if lower.starts_with("<a ") || lower == "<a>" {
+            link_depth += 1;
+        } else if lower.starts_with("</a") {
+            link_depth = link_depth.saturating_sub(1);
+        }
+        out.push_str(tag);
+        rest = &after[tag_end..];
+    }
+
+    if skip_depth == 0 && link_depth == 0 {
+        autolink_text(rest, &mut out);
+    } else {
+        out.push_str(rest);
+    }
+    out
+}
+
+/// Emit `text` into `out`, wrapping bare URLs in anchors.
+fn autolink_text(text: &str, out: &mut String) {
+    let mut cursor = 0;
+    while let Some((start, scheme_end)) = find_bare_url(&text[cursor..]) {
+        let abs_start = cursor + start;
+        let abs_scheme_end = cursor + scheme_end;
+
+        // Extend the match to the end of the URL (stop at whitespace or any
+        // tag boundary), then trim trailing sentence punctuation.
+        let bytes = text.as_bytes();
+        let mut end = abs_scheme_end;
+        while end < bytes.len() && !bytes[end].is_ascii_whitespace() && bytes[end] != b'<' {
+            end += 1;
+        }
+        let mut url = &text[abs_start..end];
+        // Trim trailing punctuation; a closing paren only counts when the URL
+        // does not also contain an opening paren (GFM balance rule).
+        loop {
+            let Some(last) = url.chars().last() else {
+                break;
+            };
+            let trailing_punct =
+                URL_TRAILING_PUNCT.contains(&last) || (last == ')' && !url.contains('('));
+            if trailing_punct {
+                url = &url[..url.len() - 1];
+            } else {
+                break;
+            }
+        }
+        if url.is_empty() || !looks_like_url(url) {
+            // Not a usable URL (e.g. bare "www." with no host); emit up to
+            // and including the scheme prefix verbatim and resume after it.
+            out.push_str(&text[cursor..abs_scheme_end]);
+            cursor = abs_scheme_end;
+            continue;
+        }
+
+        out.push_str(&text[cursor..abs_start]);
+        out.push_str("<a href=\"");
+        out.push_str(url);
+        out.push_str("\">");
+        out.push_str(url);
+        out.push_str("</a>");
+        cursor = abs_start + url.len();
+    }
+    out.push_str(&text[cursor..]);
+}
+
+/// Find the next bare URL start in `text`: a byte offset plus the offset just
+/// past the scheme, or `None`.
+fn find_bare_url(text: &str) -> Option<(usize, usize)> {
+    let mut best: Option<(usize, usize)> = None;
+    for scheme in ["https://", "http://"] {
+        if let Some(p) = text.find(scheme) {
+            let candidate = (p, p + scheme.len());
+            best = Some(match best {
+                Some(b) if b.0 <= candidate.0 => b,
+                _ => candidate,
+            });
+        }
+    }
+    if let Some(p) = text.find("www.") {
+        let at_boundary = p == 0 || !text.as_bytes()[p - 1].is_ascii_alphanumeric();
+        if at_boundary {
+            let candidate = (p, p + "www.".len());
+            best = Some(match best {
+                Some(b) if b.0 <= candidate.0 => b,
+                _ => candidate,
+            });
+        }
+    }
+    best
+}
+
+/// A `www.`-prefixed match must carry a plausible host (`www.x.y`) to count.
+fn looks_like_url(url: &str) -> bool {
+    if url.starts_with("http://") || url.starts_with("https://") {
+        return true;
+    }
+    // www.example.tld — at least one dot after the leading www.
+    url.starts_with("www.") && url["www.".len()..].contains('.')
 }
 
 // ============================================================================

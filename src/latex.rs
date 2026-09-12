@@ -73,12 +73,11 @@ impl LatexRenderer {
         }
     }
 
-    /// Render LaTeX to HTML
-    pub fn render<S: AsRef<str>>(&self, latex: S) -> Result<String> {
-        let latex = latex.as_ref();
-        trace!("Rendering LaTeX: {}", latex);
-
-        // Check cache first
+    /// Render through the cache (when enabled) and KaTeX with the
+    /// configured options. Every render path routes through here so the
+    /// cache knob behaves uniformly across `render`, `render_display`, and
+    /// `render_inline` (and therefore across the document renderer).
+    fn cached_render(&self, latex: &str, error_label: &str) -> Result<String> {
         if self.enable_cache {
             let cache = self.cache.lock();
             if let Some(cached) = cache.get(latex) {
@@ -87,16 +86,21 @@ impl LatexRenderer {
             }
         }
 
-        // Render with KaTeX
-        let html =
-            katex::render(latex).map_err(|e| Error::latex_render(format!("KaTeX error: {}", e)))?;
+        let html = katex::render_with_opts(latex, &self.opts)
+            .map_err(|e| Error::latex_render(format!("{}: {}", error_label, e)))?;
 
-        // Cache the result
         if self.enable_cache {
             let mut cache = self.cache.lock();
             cache.insert(latex.to_string(), html.clone());
         }
+        Ok(html)
+    }
 
+    /// Render LaTeX to HTML
+    pub fn render<S: AsRef<str>>(&self, latex: S) -> Result<String> {
+        let latex = latex.as_ref();
+        trace!("Rendering LaTeX: {}", latex);
+        let html = self.cached_render(latex, "KaTeX error")?;
         debug!("Rendered LaTeX equation");
         Ok(html)
     }
@@ -104,8 +108,7 @@ impl LatexRenderer {
     /// Render display mode LaTeX
     pub fn render_display<S: AsRef<str>>(&self, latex: S) -> Result<String> {
         let latex = latex.as_ref();
-        let html = katex::render(latex)
-            .map_err(|e| Error::latex_render(format!("KaTeX display mode error: {}", e)))?;
+        let html = self.cached_render(latex, "KaTeX display mode error")?;
         debug!("Rendered display mode LaTeX");
         Ok(html)
     }
@@ -113,8 +116,7 @@ impl LatexRenderer {
     /// Render inline mode LaTeX
     pub fn render_inline<S: AsRef<str>>(&self, latex: S) -> Result<String> {
         let latex = latex.as_ref();
-        let html = katex::render(latex)
-            .map_err(|e| Error::latex_render(format!("KaTeX inline mode error: {}", e)))?;
+        let html = self.cached_render(latex, "KaTeX inline mode error")?;
         debug!("Rendered inline mode LaTeX");
         Ok(html)
     }
@@ -231,7 +233,7 @@ impl LatexRenderer {
     /// Validate LaTeX syntax
     pub fn validate<S: AsRef<str>>(&self, latex: S) -> bool {
         let latex = latex.as_ref();
-        katex::render(latex).is_ok()
+        katex::render_with_opts(latex, &self.opts).is_ok()
     }
 
     /// Get rendering options
@@ -240,6 +242,9 @@ impl LatexRenderer {
     }
 
     /// Set rendering options
+    ///
+    /// Cached renders are keyed on the input only; after swapping options,
+    /// call [`Self::clear_cache`] so stale markup is not served.
     pub fn set_opts(&mut self, opts: Opts) {
         self.opts = opts;
     }

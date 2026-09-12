@@ -5,6 +5,35 @@ Changelog](https://keepachangelog.com/) — versions follow [semver](https://sem
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-12
+
+### Fixed
+- **Dead config sweep (config-knob behavior matrix):** every public knob now
+  observably changes behavior; three dead knobs found and wired.
+  - `MarkdownOptions::enable_autolinks` was settable but never read —
+    pulldown-cmark has no autolinks flag. Added a GFM-style autolink pass
+    over the sanitized HTML: bare `https?://` and `www.` URLs become
+    `<a href>` links; code regions, existing links, and tag attributes are
+    never rewritten; trailing sentence punctuation stays outside the anchor.
+  - `LatexRenderer::opts` was stored but never used — all render paths
+    called `katex::render` (i.e. `Opts::default()`). `render`,
+    `render_display`, `render_inline`, and `validate` now honor the
+    configured options; `LatexDocumentRenderer::with_cache` also actually
+    caches now (the document path previously bypassed the cache entirely).
+
+### Changed
+- `highlight_code_blocks(html, theme)` stamps the theme as a
+  `data-theme="light|dark|high-contrast|custom"` attribute on highlighted
+  blocks — the parameter previously had zero effect on output.
+  `MarkdownParser` retains its `MarkdownOptions` so render-time knobs stay
+  live.
+
+### Added
+- `tests/config_matrix.rs`: default-vs-configured behavior assertions for
+  all 16 knobs (8 markdown option flags, output format, syntax theme ×2
+  surfaces, LaTeX cache/delimiters/opts, document-renderer cache, render
+  result builders).
+
 ## [0.1.2] - 2026-09-09
 
 ### Changed

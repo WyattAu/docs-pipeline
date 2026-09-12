@@ -373,9 +373,11 @@ static CODE_CONTENT_REGEX: LazyLock<Regex> =
 /// Highlight all `<pre><code class="language-...">` blocks in rendered HTML.
 ///
 /// Each recognized block is replaced with
-/// `<div class="code-block-wrapper"><pre class="syntax-highlight" data-language="...">…</pre>`
+/// `<div class="code-block-wrapper"><pre class="syntax-highlight" data-language="..." data-theme="...">…</pre>`
 /// plus a copy-to-clipboard button, matching the docs-site rendering pipeline.
-/// Blocks with unknown or unsupported languages are left untouched.
+/// The theme is stamped on the output as `data-theme` so downstream CSS can
+/// restyle per theme. Blocks with unknown or unsupported languages are left
+/// untouched.
 pub fn highlight_code_blocks(html: &str, theme: SyntaxTheme) -> String {
     let highlighter = SyntaxHighlighter::with_theme(theme);
 
@@ -398,14 +400,27 @@ pub fn highlight_code_blocks(html: &str, theme: SyntaxTheme) -> String {
         match highlighter.highlight(&raw, lang) {
             Ok(highlighted) => {
                 format!(
-                    r#"<div class="code-block-wrapper"><pre class="syntax-highlight" data-language="{}"><code class="language-{}">{}</code></pre><button class="code-copy-btn" onclick="(function(b){{var c=b.parentElement.querySelector('code');navigator.clipboard.writeText(c.textContent).then(function(){{b.textContent='Copied!';setTimeout(function(){{b.textContent='Copy'}},2000)}})}})(this)" aria-label="Copy code to clipboard">Copy</button></div>"#,
-                    lang, lang, extract_inner_code(&highlighted)
+                    r#"<div class="code-block-wrapper"><pre class="syntax-highlight" data-language="{}" data-theme="{}"><code class="language-{}">{}</code></pre><button class="code-copy-btn" onclick="(function(b){{var c=b.parentElement.querySelector('code');navigator.clipboard.writeText(c.textContent).then(function(){{b.textContent='Copied!';setTimeout(function(){{b.textContent='Copy'}},2000)}})}})(this)" aria-label="Copy code to clipboard">Copy</button></div>"#,
+                    lang,
+                    theme_slug(theme),
+                    lang,
+                    extract_inner_code(&highlighted)
                 )
             }
             Err(_) => caps[0].to_string(),
         }
     })
     .to_string()
+}
+
+/// Stable lowercase slug for a theme (used in the `data-theme` attribute).
+fn theme_slug(theme: SyntaxTheme) -> &'static str {
+    match theme {
+        SyntaxTheme::Light => "light",
+        SyntaxTheme::Dark => "dark",
+        SyntaxTheme::HighContrast => "high-contrast",
+        SyntaxTheme::Custom => "custom",
+    }
 }
 
 fn extract_inner_code(html: &str) -> String {
