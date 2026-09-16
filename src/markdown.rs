@@ -853,17 +853,13 @@ fn autolink_text(text: &str, out: &mut String) {
         let mut url = &text[abs_start..end];
         // Trim trailing punctuation; a closing paren only counts when the URL
         // does not also contain an opening paren (GFM balance rule).
-        loop {
-            let Some(last) = url.chars().last() else {
-                break;
-            };
+        while let Some(last) = url.chars().last() {
             let trailing_punct =
                 URL_TRAILING_PUNCT.contains(&last) || (last == ')' && !url.contains('('));
-            if trailing_punct {
-                url = &url[..url.len() - 1];
-            } else {
+            if !trailing_punct {
                 break;
             }
+            url = &url[..url.len() - 1];
         }
         if url.is_empty() || !looks_like_url(url) {
             // Not a usable URL (e.g. bare "www." with no host); emit up to
@@ -1715,7 +1711,7 @@ Some more text.
         assert!(
             result.content.contains(r#"class="language-json""#),
             "Expected code block to have class=\"language-json\", got: {}",
-            &result.content
+            result.content
         );
     }
 }

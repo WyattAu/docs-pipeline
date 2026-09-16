@@ -17,6 +17,10 @@ allow = [
   "BSD-2-Clause",
   "BSD-3-Clause",
   "ISC",
+  # MPL-2.0 (file-level copyleft, no obligation beyond modified files):
+  # `cssparser` + `dtoa-short` via ammonia -> html5ever, the servo HTML/CSS
+  # stack that ammonia is built on. Precedent: crawlkit deny.toml.
+  "MPL-2.0",
   "Unicode-3.0",
   "Zlib",
   "CDLA-Permissive-2.0",

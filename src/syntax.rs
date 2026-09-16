@@ -246,9 +246,14 @@ impl SyntaxHighlighter {
 
         let mut highlighter = Highlighter::new();
         let highlights = highlighter
-            .highlight(config, code.as_bytes(), None, |lang_name| {
-                self.injected_config(lang_name)
-            })
+            .highlight(
+                config,
+                code.as_bytes(),
+                // Source is always UTF-8 (None = default UTF-8 encoding).
+                None,
+                None,
+                |lang_name| self.injected_config(lang_name),
+            )
             .map_err(|e| Error::syntax_highlight(e.to_string()))?;
 
         let mut renderer = HtmlRenderer::new();
