@@ -76,3 +76,6 @@ lang-markdown = ["dep:tree-sitter-md"]
 [lints.clippy]
 unwrap_used = "warn"
 expect_used = "warn"
+
+[package.metadata.layers]
+tier = "L2"
