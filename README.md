@@ -1,4 +1,5 @@
 # docs-pipeline
+[![Estate integration](https://github.com/WyattAu/estate-integration/actions/workflows/ci.yml/badge.svg)](https://github.com/WyattAu/estate-integration/actions/workflows/ci.yml)
 
 [![docs.rs](https://docs.rs/docs-pipeline/badge.svg)](https://docs.rs/docs-pipeline)
 [![crates.io](https://img.shields.io/crates/v/docs-pipeline.svg)](https://crates.io/crates/docs-pipeline)
