@@ -1,9 +1,9 @@
-# Requirements — docs-pipeline
+# Requirements: docs-pipeline
 
 Numbered, testable requirements. Every requirement maps to at least one named
 test or doc-comment contract; security-relevant items cite THREAT-MODEL.md rows.
 
-Scope: Documentation pipeline — markdown rendering with sanitization, syntax highlighting, and typed document model
+Scope: Documentation pipeline; markdown rendering with sanitization, syntax highlighting, and typed document model
 
 ## Functional
 

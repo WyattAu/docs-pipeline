@@ -1,4 +1,4 @@
-# Threat Model — docs-pipeline
+# Threat Model: docs-pipeline
 
 Reference: STRIDE. Scope: the crate's public API surface (`render_markdown`,
 `sanitize_html`, `SyntaxHighlighter`, `render_embed`, `LatexRenderer`, TOC
@@ -23,13 +23,13 @@ KaTeX).
 | T1 | XSS via raw HTML, event handlers, `javascript:` URIs | Elevation/Info disclosure | `render_markdown`, `sanitize_html` | Ammonia-based sanitization on the complete HTML string: scripts, iframes, SVG `onload`, event handler attributes, and `javascript:` URIs are stripped; custom/unknown elements removed by default | `test_strips_script_tags`, `test_strips_onerror_attribute`, `test_strips_onload_attribute`, `test_strips_javascript_uri`, `test_strips_svg_xss`, `test_xss_svg_onload_stripped`, `test_mdx_component_stripped_by_default` |
 | T2 | Malicious domain rendered as a trusted embed | Spoofing | `is_domain_whitelisted`, `render_embed` | Static whitelist (YouTube, Figma, Gist, CodePen, x.com); embeds render only as sandboxed iframes (`sandbox="allow-scripts allow-same-origin"`, lazy loading) with a published CSP policy | `test_domain_whitelist`, `test_embeds_have_sandbox`, `test_embeds_have_lazy_loading`, `embed_csp_policy` |
 | T3 | Renderer hang/crash on adversarial markdown | DoS | `render_markdown`, `SyntaxHighlighter::highlight_or_fallback` | Fuzz target `fuzz_render` asserts no panics on arbitrary input; tree-sitter highlighting falls back to plain code blocks for unknown languages instead of failing | `fuzz_render.rs` (fuzz/), `test_highlight_falls_back_for_unsupported_known_lang`, `test_unsupported_language` |
-| T4 | Unbounded input size / nesting depth | DoS | all render functions | **Not mitigated** — no input size or nesting-depth limit exists; pulldown-cmark is allocation-hungry on deeply nested constructs. Documented residual risk: enforce size limits at the HTTP layer | Code review |
+| T4 | Unbounded input size / nesting depth | DoS | all render functions | **Not mitigated**; no input size or nesting-depth limit exists; pulldown-cmark is allocation-hungry on deeply nested constructs. Documented residual risk: enforce size limits at the HTTP layer | Code review |
 | T5 | KaTeX placeholder smuggling (code blocks mangled) | Tampering | `LatexRenderer` | `$`/`$$` placeholder handling explicitly skips `<pre>`/`<code>` content; validation via `validate_latex` rejects malformed equations | `test_validate_latex`, `test_render_simple_latex`, `test_count_embeds_skips_code_blocks` (same code-block discipline) |
 | T6 | TOC/anchor injection (heading text → HTML/slug) | Info disclosure | `extract_toc`, `extract_toc_from_html` | Heading text passes through `html_escape` for inline TOC; HTML TOC extraction parses already-sanitized output | `test_html_escape`, `test_extract_toc_slugification`, `test_extract_toc_from_html` |
 
 ## Repudiation
 
-Not applicable — stateless render pipeline, no logs, no history.
+Not applicable; stateless render pipeline, no logs, no history.
 
 ## Out of Scope
 

@@ -1,7 +1,7 @@
 # Changelog
 
 All notable changes to this project are documented here. Format: [Keep a
-Changelog](https://keepachangelog.com/) — versions follow [semver](https://semver.org).
+Changelog](https://keepachangelog.com/); versions follow [semver](https://semver.org).
 
 ## [Unreleased]
 
@@ -9,7 +9,7 @@ Changelog](https://keepachangelog.com/) — versions follow [semver](https://sem
 
 ### Added
 - `tests/config_matrix.rs`: the 11 `lang-*` feature gates behavior-proven
-  — each gate pins `is_language_supported` / `highlight` (Ok vs
+ ; each gate pins `is_language_supported` / `highlight` (Ok vs
   `UnsupportedLanguage`) / `highlight_or_fallback` (spans vs plain) and
   `supported_languages` against its `cfg!(feature = ...)` flag, so the
   suite passes under `--all-features` (all gates on) and
@@ -22,12 +22,12 @@ Changelog](https://keepachangelog.com/) — versions follow [semver](https://sem
 ### Fixed
 - **Dead config sweep (config-knob behavior matrix):** every public knob now
   observably changes behavior; three dead knobs found and wired.
-  - `MarkdownOptions::enable_autolinks` was settable but never read —
+  - `MarkdownOptions::enable_autolinks` was settable but never read -
     pulldown-cmark has no autolinks flag. Added a GFM-style autolink pass
     over the sanitized HTML: bare `https?://` and `www.` URLs become
     `<a href>` links; code regions, existing links, and tag attributes are
     never rewritten; trailing sentence punctuation stays outside the anchor.
-  - `LatexRenderer::opts` was stored but never used — all render paths
+  - `LatexRenderer::opts` was stored but never used; all render paths
     called `katex::render` (i.e. `Opts::default()`). `render`,
     `render_display`, `render_inline`, and `validate` now honor the
     configured options; `LatexDocumentRenderer::with_cache` also actually
@@ -36,7 +36,7 @@ Changelog](https://keepachangelog.com/) — versions follow [semver](https://sem
 ### Changed
 - `highlight_code_blocks(html, theme)` stamps the theme as a
   `data-theme="light|dark|high-contrast|custom"` attribute on highlighted
-  blocks — the parameter previously had zero effect on output.
+  blocks; the parameter previously had zero effect on output.
   `MarkdownParser` retains its `MarkdownOptions` so render-time knobs stay
   live.
 
